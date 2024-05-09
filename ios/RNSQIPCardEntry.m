@@ -301,16 +301,23 @@ RCT_REMAP_METHOD(setTheme,
 }
 
 #pragma mark - Card Entry delegates Methods
-- (void)cardEntryViewController:(SQIPCardEntryViewController *)cardEntryViewController didObtainCardDetails:(SQIPCardDetails *)cardDetails completionHandler:(CompletionHandler)completionHandler
-{
+- (void)cardEntryViewController:(SQIPCardEntryViewController *)cardEntryViewController didObtainCardDetails:(SQIPCardDetails *)cardDetails completionHandler:(CompletionHandler)completionHandler {
+    NSString *postalCode = cardDetails.card.postalCode;
+
     if (self.contact) {
-        self.cardDetails = cardDetails;
-        // If buyer verification is needed, complete the card entry form so we can verify buyer
-        // This is to maintain consistent behavior with Android platform
+        // If buyer verification is needed, continue to complete the card entry form
         completionHandler(nil);
     } else {
-        self.completionHandler = completionHandler;
-        [self sendEventWithName:RNSQIPCardEntryDidObtainCardDetailsEventName body:[cardDetails jsonDictionary]];
+        // Ensure the postal code doesn't exceed 5 characters
+        if (postalCode != nil && postalCode.length > 5) {
+            // Using a standard error domain (or leaving it empty)
+            NSError *error = [NSError errorWithDomain:NSGlobalDomain code:1001 userInfo:@{NSLocalizedDescriptionKey : @"Le code postal ne doit pas dépasser 5 chiffres"}];
+            completionHandler(error);
+        } else {
+            // Proceed with further processing if postal code is valid
+            self.completionHandler = completionHandler;
+            [self sendEventWithName:RNSQIPCardEntryDidObtainCardDetailsEventName body:[cardDetails jsonDictionary]];
+        }
     }
 }
 
