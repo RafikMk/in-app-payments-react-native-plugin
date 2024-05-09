@@ -144,21 +144,27 @@ class CardEntryModule extends ReactContextBaseJavaModule {
 
     CardEntry.setCardNonceBackgroundHandler(new CardNonceBackgroundHandler() {
       @NonNull @Override
-      public CardEntryActivityCommand handleEnteredCardInBackground(CardDetails cardDetails) {
+   public CardEntryActivityCommand handleEnteredCardInBackground(CardDetails cardDetails) {
         if (CardEntryModule.this.contact != null) {
-          // If buyer Verification needed, finish the card entry activity so we can verify buyer
+          // Si la vérification du client est nécessaire, terminez l'activité de saisie de la carte
           return new CardEntryActivityCommand.Finish();
         }
 
+        String postalCode = cardDetails.getCard().getPostalCode(); // Obtenir le code postal
         WritableMap mapToReturn = cardDetailsConverter.toMapObject(cardDetails);
-        countDownLatch = new CountDownLatch(1);
-        getDeviceEventEmitter().emit("cardEntryDidObtainCardDetails", mapToReturn);
-        try {
-          // completeCardEntry or showCardNonceProcessingError must be called,
-          // otherwise the thread will be leaked.
-          countDownLatch.await();
-        } catch (InterruptedException e) {
-          throw new RuntimeException(e);
+
+        // Vérifier si le code postal contient plus de 5 chiffres
+        if (postalCode != null && postalCode.length() > 5) {
+          reference.set(new CardEntryActivityCommand.ShowError("Le code postal ne doit pas dépasser 5 chiffres"));
+          countDownLatch.countDown();
+        } else {
+          countDownLatch = new CountDownLatch(1);
+          getDeviceEventEmitter().emit("cardEntryDidObtainCardDetails", mapToReturn);
+          try {
+            countDownLatch.await(); // attendre la validation de la carte
+          } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+          }
         }
 
         return reference.get();
