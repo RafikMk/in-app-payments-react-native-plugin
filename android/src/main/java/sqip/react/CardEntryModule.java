@@ -156,7 +156,7 @@ class CardEntryModule extends ReactContextBaseJavaModule {
         // Vérifier si le code postal contient plus de 5 chiffres
         if (postalCode != null && postalCode.length() > 5) {
           reference.set(new CardEntryActivityCommand.ShowError("Le code postal ne doit pas dépasser 5 chiffres"));
-          countDownLatch.countDown();
+      safelyCountDownLatch();
         } else {
           countDownLatch = new CountDownLatch(1);
           getDeviceEventEmitter().emit("cardEntryDidObtainCardDetails", mapToReturn);
@@ -170,8 +170,23 @@ class CardEntryModule extends ReactContextBaseJavaModule {
         return reference.get();
       }
     });
+
+
+
   }
 
+    /**
+ * Safely decrements the count of the CountDownLatch if it has not already reached zero.
+ * This method ensures that the countdown operation is performed only if the CountDownLatch
+ * is not null and its current count is greater than zero, preventing potential IllegalStateException
+ * or NullPointerException which could occur if countDown() is called on an already decremented
+ * or uninitialized latch.
+ */
+private void safelyCountDownLatch() {
+  if (countDownLatch != null && countDownLatch.getCount() > 0) {
+    countDownLatch.countDown();
+  }
+}
   @Override
   public String getName() {
     return "RNSQIPCardEntry";
